@@ -42,19 +42,22 @@ class ChatAgent:
         if self.openai_api_key:
             openai.api_key = self.openai_api_key
 
-        # You can extend tools here. Keep tools fast & deterministic where possible.
-        self.tools = [
-            Tool(
-                name="web_search",
-                func=self._web_search,
-                description="Search the web for a short factual summary. Input: query string."
-            ),
-            Tool(
-                name="run_python",
-                func=self._run_python,
-                description="Run short Python snippets and return the result. Use carefully - it's sandboxed minimally."
-            )
-        ]
+        # Tools: only set if Tool is available
+        if Tool:
+            self.tools = [
+                Tool(
+                    name="web_search",
+                    func=self._web_search,
+                    description="Search the web for a short factual summary. Input: query string."
+                ),
+                Tool(
+                    name="run_python",
+                    func=self._run_python,
+                    description="Run short Python snippets and return the result. Use carefully - it's sandboxed minimally."
+                )
+            ]
+        else:
+            self.tools = []
 
         # lazy init of agent to allow model choice at runtime
         self.agent = None
@@ -86,35 +89,43 @@ class ChatAgent:
         if "groq" in model_choice.lower():
             try:
                 groq_model_map = {
-                    "groq/groq-model (placeholder)": "mixtral-8x7b-32768"
+                    "groq/groq-model (placeholder)": "llama-3.1-8b-instruct"
                 }
                 if model_choice in groq_model_map:
                     model_name = groq_model_map[model_choice]
                 else:
                     model_name = model_choice.split("/", 1)[1] if "/" in model_choice else model_choice
-                llm = ChatOpenAI(model=model_name, temperature=temperature, openai_api_key=self.groq_api_key, openai_api_base="https://api.groq.com/openai/v1")
-                agent = initialize_agent(self.tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=False)
-                self.agent = agent
-                return agent
+                if ChatOpenAI and initialize_agent and AgentType:
+                    llm = ChatOpenAI(model=model_name, temperature=temperature, openai_api_key=self.groq_api_key, openai_api_base="https://api.groq.com/openai/v1")
+                    agent = initialize_agent(self.tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=False)
+                    self.agent = agent
+                    return agent
+                else:
+                    self.agent = None
+                    return None
             except Exception as e:
-                raise RuntimeError(f"Failed to initialize Groq agent: {e}")
+                self.agent = None
+                return None
         else:
             # using ChatOpenAI from langchain
             try:
-                # Model name mapping: user-friendly choice -> LangChain argument
                 model_map = {
                     "openai/gpt-4o-mini": "gpt-4o-mini",
                     "openai/gpt-4o": "gpt-4o",
                     "openai/gpt-3.5-turbo": "gpt-3.5-turbo"
                 }
                 model_name = model_map.get(model_choice, model_choice)
-                llm = ChatOpenAI(model=model_name, temperature=temperature, openai_api_key=self.openai_api_key)
-                # create an agent with the tools, zero-shot react description
-                agent = initialize_agent(self.tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=False)
-                self.agent = agent
-                return agent
-            except Exception as e:
-                raise RuntimeError(f"Failed to initialize LangChain agent: {e}")
+                if ChatOpenAI and initialize_agent and AgentType:
+                    llm = ChatOpenAI(model=model_name, temperature=temperature, openai_api_key=self.openai_api_key)
+                    agent = initialize_agent(self.tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=False)
+                    self.agent = agent
+                    return agent
+                else:
+                    self.agent = None
+                    return None
+            except Exception:
+                self.agent = None
+                return None
 
     def run(self, user_input: str, memory_context: str = "", model_choice: str = "openai/gpt-4o-mini",
             temperature: float = 0.2, memory_window: int = 5) -> str:
@@ -139,12 +150,11 @@ class ChatAgent:
                 result = self.agent.run(prompt)
                 return str(result).strip()
             except Exception as e:
-                # fallback: try OpenAI direct completion
-                return self._openai_fallback(user_input, memory_context, temperature)
+                return self._openai_fallback(user_input, memory_context, model_choice, temperature)
         else:
-            return self._openai_fallback(user_input, memory_context, temperature)
+            return self._openai_fallback(user_input, memory_context, model_choice, temperature)
 
-    def _openai_fallback(self, user_input: str, memory_context: str, temperature: float):
+    def _openai_fallback(self, user_input: str, memory_context: str, model_choice: str, temperature: float):
         # Simple fallback using OpenAI ChatCompletion
         system_prompt = "You are a helpful assistant. Use memory context where it helps."
         messages = [
@@ -152,14 +162,16 @@ class ChatAgent:
             {"role": "user", "content": f"Memory:\n{memory_context}\n\nUser: {user_input}"},
         ]
         try:
-            if self.openai_api_key:
-                openai.api_key = self.openai_api_key
-                openai.api_base = getattr(openai, "api_base", "https://api.openai.com/v1")
-            elif self.groq_api_key:
+            if "groq" in model_choice.lower() and self.groq_api_key:
                 openai.api_key = self.groq_api_key
                 openai.api_base = "https://api.groq.com/openai/v1"
+                default_model = "llama-3.1-8b-instruct"
+            else:
+                openai.api_key = self.openai_api_key or self.groq_api_key
+                openai.api_base = getattr(openai, "api_base", "https://api.openai.com/v1")
+                default_model = "gpt-3.5-turbo"
             resp = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model=default_model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=600
