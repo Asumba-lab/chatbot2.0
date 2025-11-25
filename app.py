@@ -11,10 +11,14 @@ st.set_page_config(page_title="Chatbot with Memory (LangChain)", layout="wide")
 st.title("Chatbot With User Memory — (OpenAI / Groq + LangChain + Streamlit)")
 
 # --- Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # optional
+OPENAI_API_KEY = (
+    st.secrets.get("OPENAI_API_KEY") if hasattr(st, "secrets") and "OPENAI_API_KEY" in st.secrets else os.getenv("OPENAI_API_KEY")
+)
+GROQ_API_KEY = (
+    st.secrets.get("GROQ_API_KEY") if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets else os.getenv("GROQ_API_KEY")
+)
 if not OPENAI_API_KEY and not GROQ_API_KEY:
-    st.warning("No OPENAI_API_KEY or GROQ_API_KEY found. Set one in .env or environment variables.")
+    st.warning("No OPENAI_API_KEY or GROQ_API_KEY found. Set one in Streamlit secrets or .env.")
 st.sidebar.header("Session & Settings")
 
 session_id = st.sidebar.text_input("Session ID", value="demo_user")

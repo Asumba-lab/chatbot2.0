@@ -60,6 +60,54 @@ streamlit run app.py --server.headless true
 
 Open the URL shown in the terminal (typically `http://localhost:8501`).
 
+## Quick Start (PC/Laptop)
+
+- Requirements:
+  - Python 3.11–3.13 installed
+  - Internet access
+
+- Windows:
+  - Open PowerShell in the project folder
+  - Create venv: `python -m venv venv`
+  - Activate: `venv\Scripts\activate`
+  - Install: `python -m pip install -r requirements.txt`
+  - Create `.env` with at least one key:
+    - `OPENAI_API_KEY=...` or `GROQ_API_KEY=...`
+  - Run: `python -m streamlit run app.py`
+
+- macOS/Linux:
+  - Open Terminal in the project folder
+  - Create venv: `python3 -m venv venv`
+  - Activate: `source venv/bin/activate`
+  - Install: `pip install -r requirements.txt`
+  - Create `.env` with at least one key:
+    - `OPENAI_API_KEY=...` or `GROQ_API_KEY=...`
+  - Run: `streamlit run app.py`
+
+- After launch:
+  - Visit the printed URL (e.g., `http://localhost:8501`)
+  - Use the sidebar to select provider and model
+  - Start chatting
+
+## Troubleshooting
+
+- No API keys found:
+  - Ensure `.env` exists in the project root and contains `OPENAI_API_KEY` or `GROQ_API_KEY`
+  - On Cloud, set keys under Settings → Secrets (the app reads `st.secrets` first)
+
+- Port conflicts or blocked access:
+  - Use a different port: `streamlit run app.py --server.port 8503`
+  - Check firewall settings if the page doesn’t load
+
+- Invalid key or access errors:
+  - For OpenAI, verify your key format and account access to chosen models
+  - For Groq, pick a model available on your account (e.g., `groq/llama-3.1-8b-instruct`)
+
+- Dependency issues on Windows:
+  - Ensure you’re using a venv and Python 3.11–3.13
+  - Upgrade pip: `python -m pip install --upgrade pip`
+  - Re-run `pip install -r requirements.txt`
+
 ## Using Providers & Models
 
 - Select provider/model in the sidebar (`app.py:21-23`).
