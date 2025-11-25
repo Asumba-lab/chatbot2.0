@@ -60,6 +60,12 @@ streamlit run app.py --server.headless true
 
 Open the URL shown in the terminal (typically `http://localhost:8501`).
 
+## Live Demo
+
+- Hosted demo: `https://asumba-lab-chatbot2-0-app-xmaiu0.streamlit.app/`
+- API keys are not shared publicly. Streamlit Cloud stores secrets privately on the owner account and they are not accessible to other users or the browser.
+- To use provider APIs yourself, clone the repo and set your own keys locally via `.env`, or fork and deploy to your own Streamlit Cloud account and add keys under Settings → Secrets.
+
 ## Quick Start (PC/Laptop)
 
 - Requirements:
